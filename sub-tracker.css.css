@@ -1,0 +1,77 @@
+.st-root * {
+  font-family: 'Inter', sans-serif;
+  box-sizing: border-box;
+}
+
+.st-display {
+  font-family: 'Fraunces', serif;
+}
+
+.st-mono {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.st-card {
+  background: #F3EFE4;
+  border-radius: 4px;
+  position: relative;
+}
+
+.st-card::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 16px;
+  background-image: radial-gradient(circle at 12px 8px, #14171F 6px, transparent 6.5px);
+  background-size: 24px 16px;
+  background-repeat: repeat-x;
+}
+
+.st-line {
+  border-bottom: 1.5px dashed #C9C1AC;
+}
+
+.st-line:last-child {
+  border-bottom: none;
+}
+
+.st-google-btn:hover {
+  background: #F7F5EF !important;
+}
+
+.st-cancel-btn:hover {
+  background: #D6432E !important;
+  color: #F3EFE4 !important;
+}
+
+.st-input:focus {
+  outline: 2px solid #C99A3B;
+  outline-offset: 1px;
+}
+
+.st-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #C99A3B;
+  cursor: pointer;
+  border: 3px solid #14171F;
+}
+
+@keyframes st-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.st-fade {
+  animation: st-fade-up 0.5s ease both;
+}
