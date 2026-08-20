@@ -7,7 +7,6 @@ import {
   Eye,
   ExternalLink,
   Music2,
-  Youtube,
   Cloud,
   Tv,
   Gamepad2,
@@ -15,7 +14,7 @@ import {
   Sparkles,
   ChevronDown,
 } from "lucide-react";
-import "./subscription-tracker.css";
+import "./style.css";
 
 // ---------------------------------------------------------------------------
 // MOCK DATA
@@ -30,7 +29,7 @@ const SUBSCRIPTIONS = [
     id: "ytp",
     name: "YouTube Premium",
     category: "Video",
-    icon: Youtube,
+    icon: Tv,
     price: 149,
     cycle: "month",
     lastUsed: "Today",
