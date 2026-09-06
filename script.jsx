@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Mail,
   ArrowRight,
@@ -18,10 +18,7 @@ import "./style.css";
 
 // ---------------------------------------------------------------------------
 // MOCK DATA
-// This whole file is a front-end prototype. "Connecting Gmail" and "Sign in
-// with Google" are simulated — there is no real OAuth or inbox scanning here.
-// See the notes in chat for what a real backend needs (OAuth, Gmail API, a
-// database, a receipt-parsing job, etc).
+// The dashboard data is still a prototype, but Gmail authorization below is real.
 // ---------------------------------------------------------------------------
 
 const SUBSCRIPTIONS = [
@@ -205,11 +202,71 @@ const VERDICT_STYLE = {
   cancel: { label: "Cut it", color: "#D6432E", Icon: Scissors },
 };
 
+function loadGoogleIdentityServices() {
+  if (window.google?.accounts?.oauth2) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const existingScript = document.querySelector(
+      'script[src="https://accounts.google.com/gsi/client"]'
+    );
+    if (existingScript) {
+      existingScript.addEventListener("load", resolve, { once: true });
+      existingScript.addEventListener("error", reject, { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error("Google sign-in could not load."));
+    document.head.appendChild(script);
+  });
+}
+
+async function authenticateWithGoogle() {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    throw new Error("Add VITE_GOOGLE_CLIENT_ID to your .env file first.");
+  }
+
+  await loadGoogleIdentityServices();
+
+  const token = await new Promise((resolve, reject) => {
+    const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: "https://www.googleapis.com/auth/gmail.readonly",
+      callback: (response) => {
+        if (response.error) {
+          reject(new Error(response.error_description || "Google sign-in failed."));
+          return;
+        }
+        resolve(response.access_token);
+      },
+    });
+    tokenClient.requestAccessToken();
+  });
+
+  const profileResponse = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!profileResponse.ok) throw new Error("Google did not return your profile.");
+
+  return profileResponse.json();
+}
+
 export default function SubscriptionTracker() {
   const [view, setView] = useState("login"); // login -> connecting -> dashboard
   const [authName, setAuthName] = useState("");
   const [scanPct, setScanPct] = useState(0);
   const [budget, setBudget] = useState(1200);
+
+  const handleGoogleAuth = async () => {
+    const profile = await authenticateWithGoogle();
+    setAuthName(profile.name || profile.email || "Google account");
+    setView("connecting");
+  };
 
   useEffect(() => {
     const link = document.createElement("link");
@@ -222,7 +279,6 @@ export default function SubscriptionTracker() {
 
   useEffect(() => {
     if (view !== "connecting") return;
-    setScanPct(0);
     const start = Date.now();
     const duration = 2200;
     const tick = setInterval(() => {
@@ -252,6 +308,7 @@ export default function SubscriptionTracker() {
           <LoginView
             authName={authName}
             setAuthName={setAuthName}
+            onGoogleAuth={handleGoogleAuth}
             onContinue={() => setView("connecting")}
           />
         )}
@@ -270,8 +327,23 @@ export default function SubscriptionTracker() {
   );
 }
 
-function LoginView({ authName, setAuthName, onContinue }) {
+function LoginView({ authName, setAuthName, onGoogleAuth, onContinue }) {
   const [mode, setMode] = useState("signin");
+  const [googleError, setGoogleError] = useState("");
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  const handleGoogleAuth = async () => {
+    setGoogleError("");
+    setIsAuthenticating(true);
+    try {
+      await onGoogleAuth();
+    } catch (error) {
+      setGoogleError(error.message);
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
   return (
     <div
       style={{
@@ -337,7 +409,8 @@ function LoginView({ authName, setAuthName, onContinue }) {
 
           <button
             className="st-google-btn"
-            onClick={onContinue}
+            onClick={handleGoogleAuth}
+            disabled={isAuthenticating}
             style={{
               width: "100%",
               display: "flex",
@@ -371,8 +444,17 @@ function LoginView({ authName, setAuthName, onContinue }) {
             >
               G
             </span>
-            Continue with Google
+            {isAuthenticating ? "Opening Google…" : "Continue with Google"}
           </button>
+
+          {googleError && (
+            <div
+              role="alert"
+              style={{ color: "#D6432E", fontSize: 12, lineHeight: 1.4, marginTop: -8, marginBottom: 14 }}
+            >
+              {googleError}
+            </div>
+          )}
 
           <div
             style={{
@@ -436,7 +518,7 @@ function LoginView({ authName, setAuthName, onContinue }) {
             marginTop: 16,
           }}
         >
-          demo prototype — no real account is created
+          Gmail access is read-only and can be revoked from your Google account
         </p>
       </div>
     </div>
